@@ -1,3 +1,6 @@
 [submodule "lib/FourierDepthOfField"]
 	path = lib/FourierDepthOfField
 	url = https://github.com/liby99/FourierDepthOfField.git
+[submodule "lib/eigen"]
+	path = lib/eigen
+	url = https://github.com/eigenteam/eigen-git-mirror.git
