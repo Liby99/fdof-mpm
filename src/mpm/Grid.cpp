@@ -3,7 +3,7 @@
 using namespace mpm;
 
 Grid::Grid(const vec3 &center, const vec3 &size, const vec3 &resolution)
-  : center(center), size(size), resolution(resolution) {
+  : center(center), size(size) {
 
   // Initialize the resolutionn
   xres = resolution.x, yres = resolution.y, zres = resolution.z;
@@ -11,6 +11,8 @@ Grid::Grid(const vec3 &center, const vec3 &size, const vec3 &resolution)
 
   // Other parameters
   dx = size.x / xres, dy = size.y / yres, dz = size.z / zres;
+  invdx = 1.0f / dx, invdy = 1.0f / dy, invdz = 1.0f / dz;
+  minCorner = center - size / 2.0f, maxCorner = center + size / 2.0f;
 
   // Initialize the cells grid
   cells = new Cell[totalCellAmount];
@@ -75,6 +77,25 @@ void Grid::g2p() {
   }
 }
 
+Cell &Grid::getCell(const Grid::Index &index) {
+  auto [x, y, z] = index;
+  return cells[x * yres * zres + y * zres + z];
+}
+
 Grid::Index Grid::getCellIndex(const Particle &p) const {
-  return std::make_tuple(0, 0, 0);
+  const vec3 diff = p.position - minCorner;
+  return std::make_tuple(std::floor(diff.x * invdx), std::floor(diff.y * invdy), std::floor(diff.z * invdz));
+}
+
+void Grid::populateCellNeighbors(const Grid::Index &index, std::vector<Grid::Index> &neighbors) {
+  auto [x, y, z] = index;
+  for (int i = x - 1; i <= x + 1; i++) {
+    for (int j = y - 1; j <= y + 1; j++) {
+      for (int k = z - 1; k <= z + 1; k++) {
+        if (i >= 0 && i < xres && j >= 0 && j < yres && k >= 0 && k < zres && (i != x || j != y || k != z)) {
+          neighbors.push_back(std::make_tuple(i, j, k));
+        }
+      }
+    }
+  }
 }
