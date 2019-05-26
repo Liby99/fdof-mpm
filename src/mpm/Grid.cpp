@@ -49,7 +49,50 @@ void Grid::resetCells() {
 
 void Grid::p2g() {
   for (Particle &p : particles) {
-    auto [x, y, z] = getCellIndex(p);
+    auto index = getCellIndex(p);
+
+    // Get center of current cell
+    Vector3f cellCenter = getCellCenter(index);
+
+    // Get cell difference
+    Vector3f cellDiff = p.position - cellCenter;
+    Vector3f powCellDiff(cellDiff.x() * cellDiff.x(), 
+		                     cellDiff.y() * cellDiff.y(),
+	                       cellDiff.z() * cellDiff.z());
+
+    Vector3f invh(invdx, invdy, invdz);
+    Vector3f powInvh(invdx * invdx, invdy * invdy, invdz * invdz);
+
+    Vector3f constant1(1.125f, 1.125f, 1.125f);
+    Vector3f constant2(0.75f, 0.75f, 0.75f);
+
+    // Calculate weights (in column)
+    Matrix3f weights;
+    weights << 0.5f * powInvh.cwiseProduct(powCellDiff) + 1.5f * invh.cwiseProduct(cellDiff) + constant1,
+              -powInvh.cwiseProduct(powCellDiff) + constant2,
+              0.5f * powInvh.cwiseProduct(powCellDiff) - 1.5f * invh.cwiseProduct(cellDiff) + constant1;
+
+    // Physical constant
+    float xi = 10; // hardening
+    float e = 140000.0f; // initial young's modulus
+    float theta_c = 2.5 * 1e-2; // Critical compression
+    float theta_s = 7.5 * 1e-3; // Critical stretch
+    //float rho = 400.0f; // initial density 
+    float nu = 0.2f; // Poisson's ratios
+
+    
+
+    //// Corotational frame	
+    //Eigen::JacobiSVD<Matrix3f> D(F_m, Eigen::ComputeFullU | Eigen::ComputeFullV);	
+
+    //// Q = V * U';	
+    //// F = U * S * U';	
+    //// origF = Q*F = V * U' * U * S * U' = V * S * U';	
+    //Matrix3f Q = D.matrixV() * D.matrixU().transpose();	
+    //Matrix3f S = Matrix3f::Zero();	
+    //S.diagonal() << D.singularValues();	
+    //Matrix3f F = D.matrixU() * S * D.matrixU().transpose();
+
   }
 }
 
@@ -102,4 +145,12 @@ void Grid::populateCellNeighbors(const Grid::Index &index, std::vector<Grid::Ind
       }
     }
   }
+}
+
+Vector3f Grid::getCellCenter(const Grid::Index& index) {
+  const auto& [x, y, z] = index;
+  return Vector3f(
+    minCorner.x() + x * dx + 0.5 * dx,
+    minCorner.y() + y * dy + 0.5 * dy,
+    minCorner.z() + z * dz + 0.5 * dz);
 }

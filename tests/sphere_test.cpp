@@ -7,7 +7,7 @@ using namespace mpm;
 int main() {
 
   PathTracer pt;
-  pt.setSuperSampling(64);
+  pt.setSuperSampling(512);
 
   Scene scn;
   scn.background = Color(0.7, 0.8, 0.9);

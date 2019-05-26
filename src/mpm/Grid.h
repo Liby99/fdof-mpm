@@ -38,6 +38,9 @@ namespace mpm {
     Cell &getCell(const Grid::Index &index);
     Index getCellIndex(const Particle &p) const;
     void populateCellNeighbors(const Index &index, std::vector<Index> &neighbors);
+
+    Vector3f getCellCenter(const Grid::Index& index);
+
   };
 }
 
