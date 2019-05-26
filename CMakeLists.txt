@@ -11,6 +11,10 @@ set(src_dir ${curr_dir}/src)
 add_subdirectory(lib/fdof EXCLUDE_FROM_ALL)
 include_directories(lib/fdof/src/extern/)
 
+# Include the eigen library
+# add_subdirectory(lib/eigen EXCLUDE_FROM_ALL)
+include_directories(lib/eigen/)
+
 # Include directory
 include_directories(src/)
 
