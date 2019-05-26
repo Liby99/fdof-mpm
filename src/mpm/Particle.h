@@ -3,12 +3,14 @@
 
 #include <fdof/fdof.h>
 
+#include "Math.h"
+
 using namespace fdof;
 
 namespace mpm {
   class Particle {
   public:
-    vec3 position, velocity;
+    Vector3f position, velocity;
     float mass;
   };
 }

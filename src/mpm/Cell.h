@@ -3,12 +3,14 @@
 
 #include <fdof/fdof.h>
 
+#include "Math.h"
+
 using namespace fdof;
 
 namespace mpm {
   class Cell {
   public:
-    vec3 velocity;
+    Vector3f velocity;
     float mass;
 
     void reset();

@@ -14,15 +14,15 @@ namespace mpm {
   public:
     typedef std::tuple<int, int, int> Index;
 
-    vec3 center, size;
+    Vector3f center, size;
+    Vector3f minCorner, maxCorner;
     unsigned int xres, yres, zres, totalCellAmount;
     float dx, dy, dz, invdx, invdy, invdz;
-    vec3 minCorner, maxCorner;
 
     std::vector<Particle> particles;
     Cell *cells;
 
-    Grid(const vec3 &center, const vec3 &size, const vec3 &resolution);
+    Grid(const Vector3f &center, const Vector3f &size, const Vector3u &resolution);
     ~Grid();
 
     void addParticle(const Particle &particle);

@@ -2,15 +2,15 @@
 
 using namespace mpm;
 
-Grid::Grid(const vec3 &center, const vec3 &size, const vec3 &resolution)
+Grid::Grid(const Vector3f &center, const Vector3f &size, const Vector3u &resolution)
   : center(center), size(size) {
 
   // Initialize the resolutionn
-  xres = resolution.x, yres = resolution.y, zres = resolution.z;
+  xres = resolution(0), yres = resolution(1), zres = resolution(2);
   totalCellAmount = xres * yres * zres;
 
   // Other parameters
-  dx = size.x / xres, dy = size.y / yres, dz = size.z / zres;
+  dx = size.x() / xres, dy = size.y() / yres, dz = size.z() / zres;
   invdx = 1.0f / dx, invdy = 1.0f / dy, invdz = 1.0f / dz;
   minCorner = center - size / 2.0f, maxCorner = center + size / 2.0f;
 
@@ -83,8 +83,12 @@ Cell &Grid::getCell(const Grid::Index &index) {
 }
 
 Grid::Index Grid::getCellIndex(const Particle &p) const {
-  const vec3 diff = p.position - minCorner;
-  return std::make_tuple(std::floor(diff.x * invdx), std::floor(diff.y * invdy), std::floor(diff.z * invdz));
+  const Vector3f diff = p.position - minCorner;
+  return std::make_tuple(
+    std::floor(diff.x() * invdx),
+    std::floor(diff.y() * invdy),
+    std::floor(diff.z() * invdz)
+  );
 }
 
 void Grid::populateCellNeighbors(const Grid::Index &index, std::vector<Grid::Index> &neighbors) {

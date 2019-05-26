@@ -3,6 +3,6 @@
 using namespace mpm;
 
 void Cell::reset() {
-  velocity = vec3(0, 0, 0);
+  velocity = Vector3f::Zero();
   mass = 0.0f;
 }
