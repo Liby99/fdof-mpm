@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(mpm)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++17")
+set(CMAKE_CXX_STANDARD 17)
 
 set(FDOF_BUILD_TESTS false)
 set(curr_dir ${CMAKE_CURRENT_LIST_DIR})
