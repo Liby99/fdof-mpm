@@ -22,7 +22,7 @@ include_directories(lib/fdof/src/extern/ ${FDOF_EXTRA_INC})
 include_directories(lib/eigen/)
 
 # Find the package of openmp
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 
 # Include directory
 include_directories(src/)
@@ -44,11 +44,10 @@ foreach(test_source ${test_sources})
   set_target_properties(${temp_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${temp_dir})
 
   # TODO: Change this to cross platform
-  if(APPLE)
-    target_link_libraries(${temp_name} mpm OpenMP::OpenMP_CXX)
-  else(APPLE)
-    target_link_libraries(${temp_name} mpm)
-  endif(APPLE)
+  target_link_libraries(${temp_name} mpm)
+  if(OPENMP_FOUND)
+    target_link_libraries(${temp_name} OpenMP::OpenMP_CXX)
+  endif(OPENMP_FOUND)
 
   include("${temp_dir}/CMakeLists.txt" OPTIONAL)
 endforeach(test_source ${test_sources})
