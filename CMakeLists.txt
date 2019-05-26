@@ -20,7 +20,6 @@ include_directories(src/)
 
 file(GLOB_RECURSE mpm_sources ${src_dir}/*.cpp ${src_dir}/*.h)
 set(mpm ${mpm_sources})
-message("Sources...? ${mpm}")
 add_library(mpm STATIC ${mpm})
 target_link_libraries(mpm fdof)
 
