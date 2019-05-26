@@ -34,6 +34,9 @@ void Grid::step() {
 
   // 3. Update grid values (velocity)
   updateGrid();
+
+  // 4. Grid to Particle (G2P)
+  g2p();
 }
 
 void Grid::resetCells() {
