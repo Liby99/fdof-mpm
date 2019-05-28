@@ -1,8 +1,8 @@
-#include "Grid.h"
+﻿#include "Grid.h"
 
 using namespace mpm;
 
-Grid::Grid(const Vector3f &center, const Vector3f &size, const Vector3u &resolution)
+Grid::Grid(const Vector3f& center, const Vector3f& size, const Vector3u& resolution)
   : center(center), size(size) {
 
   // Initialize the resolutionn
@@ -16,13 +16,17 @@ Grid::Grid(const Vector3f &center, const Vector3f &size, const Vector3u &resolut
 
   // Initialize the cells grid
   cells = new Cell[totalCellAmount];
+
+  // Initialize intial lame parameter
+  lambda0 = e * nu / ((1 + nu) * (1 - 2 * nu));
+  mu0 = e / (2 * (1 + nu));
 }
 
 Grid::~Grid() {
   delete[] cells;
 }
 
-void Grid::addParticle(const Particle &particle) {
+void Grid::addParticle(const Particle& particle) {
   particles.push_back(particle);
 }
 
@@ -48,7 +52,7 @@ void Grid::resetCells() {
 }
 
 void Grid::p2g() {
-  for (Particle &p : particles) {
+  for (Particle& p : particles) {
     auto index = getCellIndex(p);
 
     // Get center of current cell
@@ -56,9 +60,10 @@ void Grid::p2g() {
 
     // Get cell difference
     Vector3f cellDiff = p.position - cellCenter;
-    Vector3f powCellDiff(cellDiff.x() * cellDiff.x(), 
-		                     cellDiff.y() * cellDiff.y(),
-	                       cellDiff.z() * cellDiff.z());
+    Vector3f powCellDiff(
+      cellDiff.x() * cellDiff.x(),
+      cellDiff.y() * cellDiff.y(),
+      cellDiff.z() * cellDiff.z());
 
     Vector3f invh(invdx, invdy, invdz);
     Vector3f powInvh(invdx * invdx, invdy * invdy, invdz * invdz);
@@ -66,32 +71,62 @@ void Grid::p2g() {
     Vector3f constant1(1.125f, 1.125f, 1.125f);
     Vector3f constant2(0.75f, 0.75f, 0.75f);
 
-    // Calculate weights (in column)
+    // 2.1 Calculate weights (in column)
     Matrix3f weights;
     weights << 0.5f * powInvh.cwiseProduct(powCellDiff) + 1.5f * invh.cwiseProduct(cellDiff) + constant1,
-              -powInvh.cwiseProduct(powCellDiff) + constant2,
-              0.5f * powInvh.cwiseProduct(powCellDiff) - 1.5f * invh.cwiseProduct(cellDiff) + constant1;
+      -powInvh.cwiseProduct(powCellDiff) + constant2,
+      0.5f * powInvh.cwiseProduct(powCellDiff) - 1.5f * invh.cwiseProduct(cellDiff) + constant1;
 
-    // Physical constant
-    float xi = 10; // hardening
-    float e = 140000.0f; // initial young's modulus
-    float theta_c = 2.5 * 1e-2; // Critical compression
-    float theta_s = 7.5 * 1e-3; // Critical stretch
-    //float rho = 400.0f; // initial density 
-    float nu = 0.2f; // Poisson's ratios
 
-    
+    // 2.2 CPIC
+    float exp = std::exp(e * (1 - p.Jp));
+    float lambda = lambda0 * exp;
+    float mu = mu0 * exp;
 
-    //// Corotational frame	
-    //Eigen::JacobiSVD<Matrix3f> D(F_m, Eigen::ComputeFullU | Eigen::ComputeFullV);	
+    // volume: J = det(F)
+    float J = p.F.determinant();
 
-    //// Q = V * U';	
-    //// F = U * S * U';	
-    //// origF = Q*F = V * U' * U * S * U' = V * S * U';	
-    //Matrix3f Q = D.matrixV() * D.matrixU().transpose();	
-    //Matrix3f S = Matrix3f::Zero();	
-    //S.diagonal() << D.singularValues();	
-    //Matrix3f F = D.matrixU() * S * D.matrixU().transpose();
+    // Polar decomposition
+    Eigen::JacobiSVD<Matrix3f> D(p.F, Eigen::ComputeFullU | Eigen::ComputeFullV);	
+
+    // Q = V * U';	
+    // F = U * S * U';	
+    // origF = Q*F = V * U' * U * S * U' = V * S * U';	
+    Matrix3f Q = D.matrixV() * D.matrixU().transpose();	
+    Matrix3f S = Matrix3f::Zero();	
+    S.diagonal() << D.singularValues();	
+    Matrix3f F = D.matrixU() * S * D.matrixU().transpose();
+
+    // Quadratic Dp, analogous to an inertia tensor
+    Matrix3f Dp;
+    Dp.diagonal() << 0.25 * dx * dx, 0.25 * dy * dy, 0.25 * dz * dz;
+    Matrix3f invDp = Dp.inverse();
+
+    // Fixed corotated constitutive model
+    // Stress tensor ??
+    Matrix3f stress = 2.0 * mu * (p.F - Q) + lambda * (J - 1) * J * p.F.transpose();
+
+    // Eqn 29 Ni(x)Qp(xi − xp) and Eqn 18 det(p.F) * σ = (∂Ψ/∂p.F)p.F^T ??
+    Matrix3f Qp = deltaTime * initialVolume * invDp * J * stress + p.mass * p.C;
+
+    // 2.3 Update neighboring grid
+    std::vector<Index> neighbors;
+    populateCellNeighbors(index, neighbors);
+    auto [x0, y0, z0] = index;
+    for(int i = 0 ; i < neighbors.size(); i ++) {
+      auto [x, y, z] = neighbors[i];
+      float weight = weights.col(x - x0 + 1).x() *
+          weights.col(y - y0 + 1).y() *
+          weights.col(z - z0 + 1).z();
+      Vector3f deltaPos =  getCellCenter(neighbors[i]) - p.position;
+      Vector3f momentum = p.velocity * p.mass;
+      // P2G 
+      Cell& cell = getCell(neighbors[i]);
+      // Mass
+      cell.mass += weight * p.mass;
+      // Momentum ??
+      cell.momentum += weight * (momentum + Qp * deltaPos);
+    }
 
   }
 }
@@ -103,7 +138,7 @@ void Grid::updateGrid() {
 }
 
 void Grid::g2p() {
-  for (Particle &p : particles) {
+  for (Particle& p : particles) {
     // 4.1: update particle's deformation gradient using MLS-MPM's velocity gradient estimate
     // Reference: MLS-MPM paper, Eq. 17
 
@@ -120,12 +155,12 @@ void Grid::g2p() {
   }
 }
 
-Cell &Grid::getCell(const Grid::Index &index) {
+Cell& Grid::getCell(const Grid::Index& index) {
   auto [x, y, z] = index;
   return cells[x * yres * zres + y * zres + z];
 }
 
-Grid::Index Grid::getCellIndex(const Particle &p) const {
+Grid::Index Grid::getCellIndex(const Particle& p) const {
   const Vector3f diff = p.position - minCorner;
   return std::make_tuple(
     std::floor(diff.x() * invdx),
@@ -134,7 +169,7 @@ Grid::Index Grid::getCellIndex(const Particle &p) const {
   );
 }
 
-void Grid::populateCellNeighbors(const Grid::Index &index, std::vector<Grid::Index> &neighbors) {
+void Grid::populateCellNeighbors(const Grid::Index& index, std::vector<Grid::Index>& neighbors) {
   auto [x, y, z] = index;
   for (int i = x - 1; i <= x + 1; i++) {
     for (int j = y - 1; j <= y + 1; j++) {

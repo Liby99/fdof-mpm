@@ -10,6 +10,7 @@ using namespace fdof;
 namespace mpm {
   class Cell {
   public:
+    Vector3f momentum;
     Vector3f velocity;
     float mass;
 
