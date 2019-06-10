@@ -32,6 +32,11 @@ namespace mpm {
 
     // Time step
     float deltaTime = 0.01f;
+
+    bool hasGravity = false;
+    Vector3f gravity = Vector3f(0, -9.8, 0);
+
+    float boundary = 0.1;
     
     std::vector<Particle> particles;
     Cell *cells;
@@ -54,6 +59,8 @@ namespace mpm {
     void populateCellNeighbors(const Index &index, std::vector<Index> &neighbors);
 
     Vector3f getCellCenter(const Grid::Index& index);
+
+    Index getCellIndex(const int index) const;
 
   };
 }

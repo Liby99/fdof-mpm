@@ -132,7 +132,33 @@ void Grid::p2g() {
 }
 
 void Grid::updateGrid() {
+  // 3. Calculate grid velocities
   for (int i = 0; i < totalCellAmount; i++) {
+    // 3.1 Calculate grid velocity based on momentum found in the P2G stage
+    Cell & cell = cells[i];
+
+    // Handle when mass is zero
+    if(cell.mass > 0) {
+      // p = mv, v = p/m
+      cell.velocity += cell.momentum / cell.mass;
+      
+      if(hasGravity) {
+        cell.velocity += gravity * deltaTime;
+      }
+      
+      // 3.2 enforce boundary conditions
+      auto center = getCellCenter(getCellIndex(i));
+      if(center.x() < boundary || center.x() > xres * dx - boundary ||
+		    center.z() < boundary || center.z() > zres * dz - boundary ||
+		    center.y() > yres * dy - boundary) {
+        cell.velocity = Vector3f::Zero();
+      }
+
+      if(center.y() < boundary) {
+        cell.velocity = Vector3f(0, -cell.velocity.y(), 0);
+      }
+
+    }
     // TODO
   }
 }
@@ -188,4 +214,12 @@ Vector3f Grid::getCellCenter(const Grid::Index& index) {
     minCorner.x() + x * dx + 0.5 * dx,
     minCorner.y() + y * dy + 0.5 * dy,
     minCorner.z() + z * dz + 0.5 * dz);
+}
+
+Grid::Index Grid::getCellIndex(const int index) const {
+  int x = index / (yres * zres);
+  int g = (index % (yres * zres));
+  int y = g / zres;
+  int z = (g % zres);
+  return std::make_tuple(x, y, z);
 }
