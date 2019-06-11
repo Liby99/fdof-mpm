@@ -208,7 +208,7 @@ void Grid::g2p() {
       Vector3f deltaPos =  getCellCenter(neighbors[i]) - p.position;
 
       // Updating particle affine momentum
-      p.C += cell.velocity * deltaPos * weight;
+      p.C += cell.velocity * deltaPos.transpose() * weight;
 
       // Updating velocity
       p.velocity += cell.velocity * weight;
@@ -224,6 +224,8 @@ void Grid::g2p() {
     // Velocity gradient = new Affine momentum
     p.F = (Matrix3f::Identity() + deltaTime * p.C) * p.F;
 
+    // Bookkeeping
+    getCell(getCellIndex(p)).particles.push_back(&p);
     // 4.1: update particle's deformation gradient using MLS-MPM's velocity gradient estimate
     // Reference: MLS-MPM paper, Eq. 17
 
