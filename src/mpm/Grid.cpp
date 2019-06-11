@@ -77,6 +77,7 @@ void Grid::p2g() {
       -powInvh.cwiseProduct(powCellDiff) + constant2,
       0.5f * powInvh.cwiseProduct(powCellDiff) - 1.5f * invh.cwiseProduct(cellDiff) + constant1;
 
+    p.W = weights;
 
     // 2.2 CPIC
     float exp = std::exp(e * (1 - p.Jp));
@@ -107,7 +108,13 @@ void Grid::p2g() {
     Matrix3f stress = 2.0 * mu * (p.F - Q) + lambda * (J - 1) * J * p.F.transpose();
 
     // Eqn 29 Ni(x)Qp(xi − xp) and Eqn 18 det(p.F) * σ = (∂Ψ/∂p.F)p.F^T ??
-    Matrix3f Qp = deltaTime * initialVolume * invDp * J * stress + p.mass * p.C;
+    //Matrix3f Qp = deltaTime * initialVolume * invDp * J * stress + p.mass * p.C;
+
+    // APIC momentum
+    auto apicP = p.mass * p.C;
+
+    // Stress momentum;
+    auto stressP = 4.0 * invDp * deltaTime * initialVolume * stress * p.F.transpose();
 
     // 2.3 Update neighboring grid
     std::vector<Index> neighbors;
@@ -115,9 +122,9 @@ void Grid::p2g() {
     auto [x0, y0, z0] = index;
     for(int i = 0 ; i < neighbors.size(); i ++) {
       auto [x, y, z] = neighbors[i];
-      float weight = weights.col(x - x0 + 1).x() *
-          weights.col(y - y0 + 1).y() *
-          weights.col(z - z0 + 1).z();
+      float weight = p.W.col(x - x0 + 1).x() *
+          p.W.col(y - y0 + 1).y() *
+          p.W.col(z - z0 + 1).z();
       Vector3f deltaPos =  getCellCenter(neighbors[i]) - p.position;
       Vector3f momentum = p.velocity * p.mass;
       // P2G 
@@ -125,9 +132,15 @@ void Grid::p2g() {
       // Mass
       cell.mass += weight * p.mass;
       // Momentum ??
-      cell.momentum += weight * (momentum + Qp * deltaPos);
-    }
+      cell.momentum += momentum;
 
+      // APIC momentum contribution
+      cell.momentum += apicP * deltaPos * weight;
+
+      // Stress momentum contribution
+      cell.momentum += stress * deltaPos * weight;
+      //cell.momentum += weight * (momentum + Qp * deltaPos);
+    }
   }
 }
 
@@ -155,7 +168,7 @@ void Grid::updateGrid() {
       }
 
       if(center.y() < boundary) {
-        cell.velocity = Vector3f(0, -cell.velocity.y(), 0);
+        cell.velocity.y() = std::max(0.0f, -cell.velocity.y());
       }
 
     }
@@ -165,19 +178,62 @@ void Grid::updateGrid() {
 
 void Grid::g2p() {
   for (Particle& p : particles) {
+    /*if (isAPIC) {
+      
+    }else if (isPolyPIC) {
+      
+    }*/
+
+    // Reset particle affine momentum and velocity to zero
+    p.velocity = Vector3f::Zero();
+    p.C = Matrix3f::Zero();
+
+    // APIC G2P affine velocity reconstruction
+    // Quadratic Dp, analogous to an inertia tensor
+    Matrix3f Dp;
+    Dp.diagonal() << 0.25 * dx * dx, 0.25 * dy * dy, 0.25 * dz * dz;
+    Matrix3f invDp = Dp.inverse();
+
+    // Get neighboring grid
+    auto index = getCellIndex(p);
+    std::vector<Index> neighbors;
+    populateCellNeighbors(index, neighbors);
+    auto [x0, y0, z0] = index;
+    for(int i = 0 ; i < neighbors.size(); i ++) {
+      auto [x, y, z] = neighbors[i];
+      auto & cell = getCell(neighbors[i]);
+      float weight = p.W.col(x - x0 + 1).x() *
+          p.W.col(y - y0 + 1).y() *
+          p.W.col(z - z0 + 1).z();
+      Vector3f deltaPos =  getCellCenter(neighbors[i]) - p.position;
+
+      // Updating particle affine momentum
+      p.C += cell.velocity * deltaPos * weight;
+
+      // Updating velocity
+      p.velocity += cell.velocity * weight;
+	  }
+
+    // Advection
+    p.position += p.velocity * deltaTime;
+
+    // Updating particle affine momentum
+    p.C *= invDp;
+
+    // 4.1: update particle's deformation gradient using MLS-MPM's velocity gradient estimate
+    // Velocity gradient = new Affine momentum
+    p.F = (Matrix3f::Identity() + deltaTime * p.C) * p.F;
+
     // 4.1: update particle's deformation gradient using MLS-MPM's velocity gradient estimate
     // Reference: MLS-MPM paper, Eq. 17
 
-    // 4.2: calculate neighbouring cell weights as in step 2.1.
-    // note: our particle's haven't moved on the grid at all by this point, so the weights will be identical
+    //// 4.3: calculate our new particle velocities
+    //for (int i = 0; i < totalCellAmount; i++) {
+    //  // 4.3.1:
+    //  // get this cell's weighted contribution to our particle's new velocity
+    //}
 
-    // 4.3: calculate our new particle velocities
-    for (int i = 0; i < totalCellAmount; i++) {
-      // 4.3.1:
-      // get this cell's weighted contribution to our particle's new velocity
-    }
-
-    // 4.4: advect particle positions by their velocity
+    //// 4.4: advect particle positions by their velocity
   }
 }
 

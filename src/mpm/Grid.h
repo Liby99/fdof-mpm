@@ -41,6 +41,10 @@ namespace mpm {
     std::vector<Particle> particles;
     Cell *cells;
 
+    // G2P
+    bool isAPIC = false;
+    bool isPolyPIC = false;
+
     Grid(const Vector3f &center, const Vector3f &size, const Vector3u &resolution);
     ~Grid();
 
